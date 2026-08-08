@@ -791,7 +791,7 @@ function goHome() { state.authView = 'home'; render(); window.scrollTo(0, 0); }
 function renderLoginPage() {
   return '<div class="mb-login-wrap"><div class="mb-login-card">' +
     '<button type="button" class="mb-btn mb-btn-ghost sm" style="margin-bottom:10px;margin-left:-10px" onclick="goHome()">← Back to home</button>' +
-    '<div class="mb-brand mb-mb-24"><div class="mb-brand-mark">M</div><div><div class="mb-brand-name">Meridian</div><div class="mb-brand-sub">Private Banking</div></div></div>' +
+    '<div class="mb-brand mb-mb-24"><div class="mb-brand-mark">M</div><div class="mb-brand-name">Meridian</div></div>' +
     '<div class="display" style="font-size:22px;font-weight:600;margin-bottom:4px">Welcome back</div>' +
     '<div class="mb-muted" style="font-size:13px;margin-bottom:22px">Sign in to view your accounts.</div>' +
     '<form onsubmit="return doLogin(event)">' +
@@ -830,7 +830,7 @@ function renderShell() {
   const t = titles[state.page];
   return '<div class="mb-shell">' +
     '<aside class="mb-sidebar">' +
-      '<div class="mb-brand"><div class="mb-brand-mark">M</div><div><div class="mb-brand-name">Meridian</div><div class="mb-brand-sub">Private Banking</div></div></div>' +
+      '<div class="mb-brand"><div class="mb-brand-mark">M</div><div class="mb-brand-name">Meridian</div></div>' +
       '<nav class="mb-nav">' + NAV_ITEMS.map(item =>
         '<button type="button" class="mb-nav-item' + (state.page === item.id ? ' active' : '') + '" onclick="goPage(\'' + item.id + '\')">' + icon(item.icon, 17) + ' ' + item.label + '</button>'
       ).join('') + '</nav>' +
@@ -1200,6 +1200,34 @@ function setTransferMode(m) { state.transfer = { mode: m, step: 'form', error: '
 function reviewTransfer(e) {
   e.preventDefault();
   const t = state.transfer;
+
+  if (t.mode === 'external') {
+    const from = document.getElementById('tf-from').value;
+    const amount = parseFloat(document.getElementById('tf-amount').value);
+    const recipientName = document.getElementById('tf-ext-name').value.trim();
+    const bankName = document.getElementById('tf-ext-bank').value.trim();
+    const acctNumber = document.getElementById('tf-ext-acct').value.trim();
+    const routing = document.getElementById('tf-ext-routing').value.trim();
+    const acctType = document.getElementById('tf-ext-type').value;
+    const transferType = document.getElementById('tf-ext-method').value;
+    const memo = document.getElementById('tf-memo').value;
+    const fromAcct = accounts.find(a => a.id === from);
+
+    if (!recipientName || !bankName || !acctNumber || !routing) { t.error = 'Please complete all recipient bank details.'; render(); return false; }
+    if (!/^\d{9}$/.test(routing)) { t.error = 'Routing number must be exactly 9 digits.'; render(); return false; }
+    if (acctNumber.length < 4) { t.error = 'Enter a valid account number.'; render(); return false; }
+    if (!amount || amount <= 0) { t.error = 'Enter an amount greater than $0.'; render(); return false; }
+    if (amount > fromAcct.balance) { t.error = 'That exceeds the available balance on this account.'; render(); return false; }
+
+    state.transfer = {
+      mode: 'external', step: 'review', from: from, amount: amount, memo: memo, error: '',
+      recipientName: recipientName, bankName: bankName, acctNumber: acctNumber, routing: routing,
+      acctType: acctType, transferType: transferType,
+    };
+    render();
+    return false;
+  }
+
   const from = document.getElementById('tf-from').value;
   const amount = parseFloat(document.getElementById('tf-amount').value);
   const memo = document.getElementById('tf-memo').value;
@@ -1219,9 +1247,9 @@ function reviewTransfer(e) {
 }
 function confirmTransfer() {
   const t = state.transfer;
-  if (t.mode === 'internal') doTransfer(t.from, t.to, t.amount, t.memo);
-  else doP2P(t.from, t.recipient, t.amount, t.memo);
-  state.transfer.step = 'success';
+  if (t.mode === 'internal') { doTransfer(t.from, t.to, t.amount, t.memo); state.transfer.step = 'success'; }
+  else if (t.mode === 'p2p') { doP2P(t.from, t.recipient, t.amount, t.memo); state.transfer.step = 'success'; }
+  else if (t.mode === 'external') { state.transfer.step = 'failed'; }
   render();
 }
 function backTransfer() { state.transfer.step = 'form'; render(); }
@@ -1249,34 +1277,85 @@ function renderTransfers() {
   let inner = '';
   if (t.step === 'form') {
     const availableTo = accounts.filter(a => a.type !== 'credit');
-    inner = '<div class="mb-tabs mb-mb-24">' +
+    const tabs = '<div class="mb-tabs mb-mb-24">' +
       '<button type="button" class="mb-tab' + (t.mode === 'internal' ? ' active' : '') + '" onclick="setTransferMode(\'internal\')">Between my accounts</button>' +
       '<button type="button" class="mb-tab' + (t.mode === 'p2p' ? ' active' : '') + '" onclick="setTransferMode(\'p2p\')">Send to someone</button>' +
-    '</div>' +
-    '<form onsubmit="return reviewTransfer(event)">' +
-      '<div class="mb-field"><label>From</label><select class="mb-select" id="tf-from">' +
-      accounts.map(a => '<option value="' + a.id + '">' + a.name + ' — ' + money(a.balance) + '</option>').join('') + '</select></div>' +
-      (t.mode === 'internal'
-        ? '<div class="mb-field"><label>To</label><select class="mb-select" id="tf-to">' + availableTo.map(a => '<option value="' + a.id + '">' + a.name + '</option>').join('') + '</select></div>'
-        : '<div class="mb-field"><label>Recipient name</label><input class="mb-input" id="tf-recipient" placeholder="e.g. Kojo Boateng"/></div>' +
-          '<div class="mb-field"><label>Email or phone</label><input class="mb-input" id="tf-recipient-contact" placeholder="email@example.com"/></div>') +
-      '<div class="mb-field"><label>Amount</label><input class="mb-input num" id="tf-amount" type="number" step="0.01" min="0" placeholder="0.00"/></div>' +
-      '<div class="mb-field"><label>Memo (optional)</label><input class="mb-input" id="tf-memo" placeholder="What is this for?"/></div>' +
-      (t.error ? '<div style="color:var(--coral);font-size:12.5px;margin-bottom:12px">' + t.error + '</div>' : '') +
-      '<button class="mb-btn mb-btn-primary block" type="submit">Review transfer</button>' +
-    '</form>';
+      '<button type="button" class="mb-tab' + (t.mode === 'external' ? ' active' : '') + '" onclick="setTransferMode(\'external\')">External bank transfer</button>' +
+    '</div>';
+
+    if (t.mode === 'external') {
+      inner = tabs +
+        '<div class="mb-muted" style="font-size:12px;margin-bottom:16px;display:flex;gap:8px;align-items:flex-start">' + icon('info', 14, 'style="flex-shrink:0;margin-top:1px"') +
+        '<span>Sending to an account at another bank. Transfers typically take 1–3 business days once submitted.</span></div>' +
+        '<form onsubmit="return reviewTransfer(event)">' +
+        '<div class="mb-field"><label>From</label><select class="mb-select" id="tf-from">' +
+        accounts.filter(a => a.type !== 'credit').map(a => '<option value="' + a.id + '">' + a.name + ' — ' + money(a.balance) + '</option>').join('') + '</select></div>' +
+        '<div class="mb-field"><label>Recipient full name</label><input class="mb-input" id="tf-ext-name" placeholder="As it appears on their account"/></div>' +
+        '<div class="mb-field"><label>Recipient bank name</label><input class="mb-input" id="tf-ext-bank" placeholder="e.g. First National Bank"/></div>' +
+        '<div class="mb-row">' +
+        '<div class="mb-field"><label>Account number</label><input class="mb-input num" id="tf-ext-acct" placeholder="Account number"/></div>' +
+        '<div class="mb-field"><label>Routing number</label><input class="mb-input num" id="tf-ext-routing" placeholder="9 digits" maxlength="9"/></div>' +
+        '</div>' +
+        '<div class="mb-row">' +
+        '<div class="mb-field"><label>Account type</label><select class="mb-select" id="tf-ext-type"><option value="checking">Checking</option><option value="savings">Savings</option></select></div>' +
+        '<div class="mb-field"><label>Transfer method</label><select class="mb-select" id="tf-ext-method"><option value="ach">ACH (1–3 business days)</option><option value="wire">Domestic wire (same day)</option></select></div>' +
+        '</div>' +
+        '<div class="mb-field"><label>Amount</label><input class="mb-input num" id="tf-amount" type="number" step="0.01" min="0" placeholder="0.00"/></div>' +
+        '<div class="mb-field"><label>Memo (optional)</label><input class="mb-input" id="tf-memo" placeholder="What is this for?"/></div>' +
+        (t.error ? '<div style="color:var(--coral);font-size:12.5px;margin-bottom:12px">' + t.error + '</div>' : '') +
+        '<button class="mb-btn mb-btn-primary block" type="submit">Review transfer</button>' +
+        '</form>';
+    } else {
+      inner = tabs +
+        '<form onsubmit="return reviewTransfer(event)">' +
+        '<div class="mb-field"><label>From</label><select class="mb-select" id="tf-from">' +
+        accounts.map(a => '<option value="' + a.id + '">' + a.name + ' — ' + money(a.balance) + '</option>').join('') + '</select></div>' +
+        (t.mode === 'internal'
+          ? '<div class="mb-field"><label>To</label><select class="mb-select" id="tf-to">' + availableTo.map(a => '<option value="' + a.id + '">' + a.name + '</option>').join('') + '</select></div>'
+          : '<div class="mb-field"><label>Recipient name</label><input class="mb-input" id="tf-recipient" placeholder="e.g. Kojo Boateng"/></div>' +
+            '<div class="mb-field"><label>Email or phone</label><input class="mb-input" id="tf-recipient-contact" placeholder="email@example.com"/></div>') +
+        '<div class="mb-field"><label>Amount</label><input class="mb-input num" id="tf-amount" type="number" step="0.01" min="0" placeholder="0.00"/></div>' +
+        '<div class="mb-field"><label>Memo (optional)</label><input class="mb-input" id="tf-memo" placeholder="What is this for?"/></div>' +
+        (t.error ? '<div style="color:var(--coral);font-size:12.5px;margin-bottom:12px">' + t.error + '</div>' : '') +
+        '<button class="mb-btn mb-btn-primary block" type="submit">Review transfer</button>' +
+        '</form>';
+    }
   } else if (t.step === 'review') {
-    const fromAcct = accounts.find(a => a.id === t.from);
-    const toLabel = t.mode === 'internal' ? accounts.find(a => a.id === t.to).name : t.recipient;
-    inner = '<div class="mb-muted" style="font-size:12.5px;margin-bottom:14px">Review and confirm</div>' +
-      '<div class="mb-flex" style="justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--hairline)"><span class="mb-muted">From</span><span>' + fromAcct.name + '</span></div>' +
-      '<div class="mb-flex" style="justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--hairline)"><span class="mb-muted">To</span><span>' + toLabel + '</span></div>' +
-      (t.memo ? '<div class="mb-flex" style="justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--hairline)"><span class="mb-muted">Memo</span><span>' + esc(t.memo) + '</span></div>' : '') +
-      '<div class="mb-flex" style="justify-content:space-between;padding:10px 0"><span class="mb-muted">Amount</span><span class="num display" style="font-size:20px;font-weight:600">' + money(t.amount) + '</span></div>' +
-      '<div class="mb-flex mb-gap-12 mb-mt-16">' +
-        '<button type="button" class="mb-btn mb-btn-secondary block" onclick="backTransfer()">Back</button>' +
-        '<button type="button" class="mb-btn mb-btn-primary block" onclick="confirmTransfer()">Confirm & send</button>' +
-      '</div>';
+    if (t.mode === 'external') {
+      const fromAcct = accounts.find(a => a.id === t.from);
+      inner = '<div class="mb-muted" style="font-size:12.5px;margin-bottom:14px">Review and confirm</div>' +
+        '<div class="mb-review-row"><span class="mb-muted">From</span><span>' + fromAcct.name + '</span></div>' +
+        '<div class="mb-review-row"><span class="mb-muted">Recipient</span><span>' + esc(t.recipientName) + '</span></div>' +
+        '<div class="mb-review-row"><span class="mb-muted">Bank</span><span>' + esc(t.bankName) + '</span></div>' +
+        '<div class="mb-review-row"><span class="mb-muted">Account</span><span class="num">••••' + t.acctNumber.slice(-4) + '</span></div>' +
+        '<div class="mb-review-row"><span class="mb-muted">Routing</span><span class="num">' + t.routing + '</span></div>' +
+        '<div class="mb-review-row"><span class="mb-muted">Method</span><span>' + (t.transferType === 'wire' ? 'Domestic wire' : 'ACH') + '</span></div>' +
+        '<div class="mb-review-row"><span class="mb-muted">Amount</span><span class="num display" style="font-size:18px;font-weight:600">' + money(t.amount) + '</span></div>' +
+        '<div class="mb-flex mb-gap-12 mb-mt-16">' +
+          '<button type="button" class="mb-btn mb-btn-secondary block" onclick="backTransfer()">Back</button>' +
+          '<button type="button" class="mb-btn mb-btn-primary block" onclick="confirmTransfer()">Send transfer</button>' +
+        '</div>';
+    } else {
+      const fromAcct = accounts.find(a => a.id === t.from);
+      const toLabel = t.mode === 'internal' ? accounts.find(a => a.id === t.to).name : t.recipient;
+      inner = '<div class="mb-muted" style="font-size:12.5px;margin-bottom:14px">Review and confirm</div>' +
+        '<div class="mb-flex" style="justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--hairline)"><span class="mb-muted">From</span><span>' + fromAcct.name + '</span></div>' +
+        '<div class="mb-flex" style="justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--hairline)"><span class="mb-muted">To</span><span>' + toLabel + '</span></div>' +
+        (t.memo ? '<div class="mb-flex" style="justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--hairline)"><span class="mb-muted">Memo</span><span>' + esc(t.memo) + '</span></div>' : '') +
+        '<div class="mb-flex" style="justify-content:space-between;padding:10px 0"><span class="mb-muted">Amount</span><span class="num display" style="font-size:20px;font-weight:600">' + money(t.amount) + '</span></div>' +
+        '<div class="mb-flex mb-gap-12 mb-mt-16">' +
+          '<button type="button" class="mb-btn mb-btn-secondary block" onclick="backTransfer()">Back</button>' +
+          '<button type="button" class="mb-btn mb-btn-primary block" onclick="confirmTransfer()">Confirm & send</button>' +
+        '</div>';
+    }
+  } else if (t.step === 'failed') {
+    inner = '<div style="text-align:center;padding:20px 0">' +
+      '<div style="width:54px;height:54px;border-radius:50%;background:color-mix(in srgb, var(--coral) 18%, transparent);display:flex;align-items:center;justify-content:center;margin:0 auto 16px">' + icon('alert', 26, 'style="color:var(--coral)"') + '</div>' +
+      '<div class="display" style="font-size:19px;font-weight:600">This transfer cannot be completed</div>' +
+      '<div class="mb-muted" style="font-size:13px;margin:8px 0 4px;max-width:340px;margin-left:auto;margin-right:auto">' +
+      'We were not able to process this external transfer. No funds have left your account, and nothing was sent to the recipient.</div>' +
+      '<div class="mb-muted" style="font-size:11.5px;margin:14px 0 20px">Reference: DEMO-' + Math.floor(100000 + Math.random() * 900000) + ' · Educational demo only — external transfers are not supported.</div>' +
+      '<button type="button" class="mb-btn mb-btn-secondary block" onclick="resetTransfer()">Back to transfers</button></div>';
   } else {
     inner = '<div style="text-align:center;padding:20px 0">' +
       '<div style="width:54px;height:54px;border-radius:50%;background:color-mix(in srgb, var(--teal) 18%, transparent);display:flex;align-items:center;justify-content:center;margin:0 auto 16px">' + icon('check', 26, 'style="color:var(--teal)"') + '</div>' +
@@ -1285,7 +1364,7 @@ function renderTransfers() {
       '<button type="button" class="mb-btn mb-btn-secondary block" onclick="resetTransfer()">Make another transfer</button></div>';
   }
   return '<div><div class="mb-section-head mb-mb-16"><h2 style="font-size:20px">Transfers</h2></div><div class="mb-ledger-rule"></div>' +
-    '<div class="mb-card" style="max-width:480px">' + inner + '</div></div>';
+    '<div class="mb-card" style="max-width:520px">' + inner + '</div></div>';
 }
 
 /* ============================== CARDS ============================== */
