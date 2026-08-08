@@ -287,6 +287,17 @@
 .mb-footer-cols { display: flex; gap: 50px; flex-wrap: wrap; }
 .mb-footer-h { font-size: 11.5px; text-transform: uppercase; letter-spacing: .07em; font-weight: 700; margin-bottom: 10px; }
 .mb-footer-link { font-size: 12.5px; padding: 4px 0; }
+.mb-footer-link-btn, .mb-util-link-btn { cursor: pointer; background: none; border: none; font: inherit; color: inherit; padding: 0; }
+.mb-footer-link-btn:hover, .mb-util-link-btn:hover { color: var(--brass-bright); text-decoration: underline; }
+.mb-signup-progress { display: flex; gap: 6px; margin-bottom: 22px; }
+.mb-signup-step-dot { height: 4px; flex: 1; border-radius: 99px; background: var(--surface-3); }
+.mb-signup-step-dot.done { background: var(--brass); }
+.mb-signup-step-dot.active { background: var(--brass-bright); }
+.mb-type-card { border: 1px solid var(--hairline-strong); border-radius: 14px; padding: 18px; cursor: pointer; margin-bottom: 12px; transition: border-color .15s; }
+.mb-type-card:hover { border-color: var(--brass); }
+.mb-type-card.selected { border-color: var(--brass); background: var(--surface-2); }
+.mb-review-row { display: flex; justify-content: space-between; padding: 9px 0; border-bottom: 1px solid var(--hairline); font-size: 13px; }
+.mb-review-row:last-child { border-bottom: none; }
 .mb-footer-fine { width: 100%; font-size: 11px; margin-top: 26px; padding-top: 20px; border-top: 1px solid var(--hairline); line-height: 1.6; }
 
 @media (max-width: 860px) {
@@ -636,27 +647,43 @@ function updateBalance(accountId, delta) {
 function render() {
   const root = document.getElementById('root');
   document.body.className = '';
+  let mainHtml;
   if (!state.loggedIn) {
-    root.innerHTML = '<div class="mb-app" data-theme="' + state.theme + '">' +
-      (state.authView === 'home' ? renderHomePage() : renderLoginPage()) +
-      '</div>';
-    return;
+    let inner;
+    if (state.authView === 'signup') inner = renderSignupPage();
+    else if (state.authView === 'login') inner = renderLoginPage();
+    else inner = renderHomePage();
+    mainHtml = '<div class="mb-app" data-theme="' + state.theme + '">' + inner + '</div>';
+  } else {
+    mainHtml = '<div class="mb-app" data-theme="' + state.theme + '">' + renderShell() + '</div>';
   }
-  root.innerHTML = '<div class="mb-app" data-theme="' + state.theme + '">' + renderShell() + '</div>' +
-    renderModal() + '<div class="mb-toast-stack" id="toast-stack"></div>';
+  root.innerHTML = mainHtml + renderModal() + '<div class="mb-toast-stack" id="toast-stack"></div>';
   renderToasts();
 }
 
 /* ============================== HOME ============================== */
+const PRODUCTS = [
+  { id: 'checking', icon: 'landmark', title: 'Checking accounts', body: 'No monthly fee with direct deposit. Free overdraft cushion up to $50.', cta: 'Compare checking',
+    detail: 'Everyday Checking gives you a debit card, mobile check deposit, and zero monthly fees when you set up direct deposit. No minimum balance requirement, and overdrafts up to $50 are covered free.',
+    bullets: ['No monthly maintenance fee with direct deposit', 'Free overdraft cushion up to $50', 'Mobile check deposit and instant transfers', 'Visa debit card with instant freeze'], signup: true },
+  { id: 'savings', icon: 'wallet', title: 'Savings & CDs', body: 'Earn 4.25% APY on savings with no minimum balance to open.', cta: 'See savings rates',
+    detail: 'High-Yield Savings earns 4.25% APY with no minimum balance and no monthly fee. Set savings goals right in the app and watch your progress in real time.',
+    bullets: ['4.25% APY, no minimum balance', 'No monthly maintenance fee', 'Built-in savings goal tracking', 'Six free withdrawals per statement cycle'], signup: true },
+  { id: 'credit', icon: 'card', title: 'Credit cards', body: 'Cash back, travel rewards, and low-interest cards — find your fit.', cta: 'Explore cards',
+    detail: 'Meridian Rewards Card offers 2% cash back on everything, no annual fee, and an introductory 0% APR for 15 months on purchases and balance transfers.',
+    bullets: ['2% unlimited cash back', 'No annual fee', '0% intro APR for 15 months', 'Instant freeze and virtual card numbers'], signup: false },
+  { id: 'loans', icon: 'receipt', title: 'Loans & mortgages', body: 'Home loans, auto loans, and personal loans with rate-match guarantee.', cta: 'Check rates',
+    detail: 'Whether you are buying a home, financing a car, or consolidating debt, Meridian offers competitive fixed rates with a rate-match guarantee against any licensed lender.',
+    bullets: ['Fixed-rate mortgages from 6.1% APR', 'Auto loans with same-day pre-approval', 'Personal loans up to $50,000', 'Rate-match guarantee'], signup: false },
+  { id: 'investing', icon: 'trendUp', title: 'Investing & retirement', body: 'Managed portfolios and IRAs with no advisory fee for your first year.', cta: 'Start investing',
+    detail: 'Meridian Invest builds and manages a diversified portfolio based on your goals and risk tolerance. Traditional and Roth IRAs are available with no advisory fee for your first year.',
+    bullets: ['Diversified managed portfolios', 'Traditional and Roth IRAs', 'No advisory fee for year one', 'Human advisors available by video call'], signup: false },
+  { id: 'business', icon: 'shield', title: 'Business banking', body: 'Business checking, merchant services, and lines of credit for growing teams.', cta: 'For your business',
+    detail: 'Business Checking includes free wire transfers, integrated invoicing, and a dedicated relationship manager once your balance crosses $25,000.',
+    bullets: ['Free incoming wires', 'Integrated invoicing and payroll', 'Lines of credit up to $250,000', 'Dedicated relationship manager'], signup: false },
+];
+
 function renderHomePage() {
-  const products = [
-    ['landmark', 'Checking accounts', 'No monthly fee with direct deposit. Free overdraft cushion up to $50.', 'Compare checking'],
-    ['wallet', 'Savings & CDs', 'Earn 4.25% APY on savings with no minimum balance to open.', 'See savings rates'],
-    ['card', 'Credit cards', 'Cash back, travel rewards, and low-interest cards — find your fit.', 'Explore cards'],
-    ['receipt', 'Loans & mortgages', 'Home loans, auto loans, and personal loans with rate-match guarantee.', 'Check rates'],
-    ['trendUp', 'Investing & retirement', 'Managed portfolios and IRAs with no advisory fee for your first year.', 'Start investing'],
-    ['shield', 'Business banking', 'Business checking, merchant services, and lines of credit for growing teams.', 'For your business'],
-  ];
   const trust = [
     ['shield', 'FDIC insured up to $250,000'],
     ['fingerprint', 'Biometric & 2FA on every login'],
@@ -665,13 +692,13 @@ function renderHomePage() {
   return '<div class="mb-corp">' +
     '<div class="mb-util-bar"><div class="mb-util-inner">' +
       '<div class="mb-util-links"><span>Personal</span><span>Business</span><span>Wealth</span></div>' +
-      '<div class="mb-util-links"><span>Find a branch</span><span>1-800-555-0182</span><span>EN | ES</span></div>' +
+      '<div class="mb-util-links"><span class="mb-util-link-btn" onclick="openModal(\'branches\')">Find a branch</span><span class="mb-util-link-btn" onclick="openModal(\'contact\')">1-800-555-0182</span><span>EN | ES</span></div>' +
     '</div></div>' +
     '<header class="mb-corp-nav"><div class="mb-corp-nav-inner">' +
       '<div class="mb-brand"><div class="mb-brand-mark">M</div><div class="mb-brand-name" style="font-size:20px">Meridian</div></div>' +
-      '<nav class="mb-corp-links">' + ['Checking','Savings','Credit Cards','Loans','Investing','Business'].map(i => '<button type="button" class="mb-corp-link">' + i + ' ' + icon('chevronDown', 13) + '</button>').join('') + '</nav>' +
+      '<nav class="mb-corp-links">' + PRODUCTS.map(p => '<button type="button" class="mb-corp-link" onclick="openProductModal(\'' + p.id + '\')">' + p.title.split(' ')[0] + ' ' + icon('chevronDown', 13) + '</button>').join('') + '</nav>' +
       '<div class="mb-flex mb-gap-12">' +
-        '<button type="button" class="mb-icon-btn" aria-label="Search">' + icon('search', 16) + '</button>' +
+        '<button type="button" class="mb-icon-btn" aria-label="Search" onclick="openModal(\'contact\')">' + icon('search', 16) + '</button>' +
         '<button type="button" class="mb-btn mb-btn-primary sm" onclick="goSignIn()">Sign in</button>' +
       '</div>' +
     '</div></header>' +
@@ -681,8 +708,8 @@ function renderHomePage() {
         '<h1 class="display">Earn $300 when you open a checking account.</h1>' +
         '<p class="mb-muted" style="font-size:15px;max-width:480px;margin-top:14px">Open a Meridian Everyday Checking account and set up direct deposit within 60 days to get $300 — plus no monthly fees, ever.</p>' +
         '<div class="mb-flex mb-gap-12 mb-mt-24">' +
-          '<button type="button" class="mb-btn mb-btn-primary" onclick="goSignIn()">Open an account ' + icon('arrowRight', 15) + '</button>' +
-          '<button type="button" class="mb-btn mb-btn-secondary" onclick="goSignIn()">See offer details</button>' +
+          '<button type="button" class="mb-btn mb-btn-primary" onclick="goSignUp(\'checking\')">Open an account ' + icon('arrowRight', 15) + '</button>' +
+          '<button type="button" class="mb-btn mb-btn-secondary" onclick="openProductModal(\'checking\')">See offer details</button>' +
         '</div>' +
         '<div class="mb-hero-trust mb-mt-24">' + icon('shield', 14) + ' Member FDIC · Equal Housing Lender</div>' +
       '</div>' +
@@ -696,46 +723,66 @@ function renderHomePage() {
       '</div>' +
     '</div></section>' +
     '<section class="mb-quicklinks-strip"><div class="mb-corp-inner mb-quicklinks-grid">' +
-      [['landmark','Open an account'],['send','Pay bills'],['search','Find a branch or ATM'],['help','Customer service']]
-        .map(q => '<button type="button" class="mb-quicklink" onclick="goSignIn()">' + icon(q[0], 17) + ' ' + q[1] + '</button>').join('') +
+      '<button type="button" class="mb-quicklink" onclick="goSignUp(\'checking\')">' + icon('landmark', 17) + ' Open an account</button>' +
+      '<button type="button" class="mb-quicklink" onclick="goSignIn()">' + icon('send', 17) + ' Pay bills</button>' +
+      '<button type="button" class="mb-quicklink" onclick="openModal(\'branches\')">' + icon('search', 17) + ' Find a branch or ATM</button>' +
+      '<button type="button" class="mb-quicklink" onclick="openModal(\'contact\')">' + icon('help', 17) + ' Customer service</button>' +
     '</div></section>' +
     '<section class="mb-corp-inner mb-home-section">' +
       '<div class="mb-section-head"><h2 style="font-size:22px">Banking built around you</h2></div><div class="mb-ledger-rule"></div>' +
-      '<div class="mb-feature-grid">' + products.map(f =>
-        '<div class="mb-feature-card"><div class="mb-quick-icon">' + icon(f[0], 18) + '</div>' +
-        '<div style="font-weight:600;font-size:14.5px;margin-top:12px">' + f[1] + '</div>' +
-        '<div class="mb-muted" style="font-size:12.5px;margin-top:6px;line-height:1.6">' + f[2] + '</div>' +
-        '<button type="button" class="mb-link mb-mt-16" style="padding:0" onclick="goSignIn()">' + f[3] + ' ' + icon('chevronRight', 13) + '</button></div>'
+      '<div class="mb-feature-grid">' + PRODUCTS.map(f =>
+        '<div class="mb-feature-card"><div class="mb-quick-icon">' + icon(f.icon, 18) + '</div>' +
+        '<div style="font-weight:600;font-size:14.5px;margin-top:12px">' + f.title + '</div>' +
+        '<div class="mb-muted" style="font-size:12.5px;margin-top:6px;line-height:1.6">' + f.body + '</div>' +
+        '<button type="button" class="mb-link mb-mt-16" style="padding:0" onclick="openProductModal(\'' + f.id + '\')">' + f.cta + ' ' + icon('chevronRight', 13) + '</button></div>'
       ).join('') + '</div>' +
     '</section>' +
     '<section class="mb-rate-banner"><div class="mb-corp-inner mb-rate-banner-inner">' +
       '<div><div class="mb-eyebrow" style="color:#14100a">Savings rate</div>' +
       '<div class="display" style="font-size:34px;font-weight:600;color:#14100a">4.25% APY</div>' +
       '<div style="font-size:12.5px;color:#3a2e15">On our High-Yield Savings account — no minimum balance.</div></div>' +
-      '<button type="button" class="mb-btn" style="background:#14100a;color:#fff" onclick="goSignIn()">Open savings ' + icon('arrowRight', 14) + '</button>' +
+      '<button type="button" class="mb-btn" style="background:#14100a;color:#fff" onclick="goSignUp(\'savings\')">Open savings ' + icon('arrowRight', 14) + '</button>' +
     '</div></section>' +
     '<section class="mb-corp-inner mb-home-section"><div class="mb-security-row">' +
-      '<div style="flex:1;min-width:260px"><div class="mb-section-head"><h2 style="font-size:20px">Security is not a feature. It\'s the foundation.</h2></div>' +
+      '<div style="flex:1;min-width:260px"><div class="mb-section-head"><h2 style="font-size:20px">Security is not a feature. It is the foundation.</h2></div>' +
       '<p class="mb-muted" style="font-size:13px;margin-top:8px;line-height:1.7;max-width:480px">Every account is protected by two-factor authentication, real-time fraud monitoring, and instant card freezing.</p>' +
       '<div class="mb-trust-list mb-mt-16">' + trust.map(t => '<div class="mb-trust-item">' + icon(t[0], 15) + ' ' + t[1] + '</div>').join('') + '</div></div>' +
       '<div class="mb-app-download"><div style="font-weight:600;font-size:14.5px;margin-bottom:4px">Bank on the go</div>' +
       '<div class="mb-muted" style="font-size:12.5px;margin-bottom:14px">Get the Meridian app for iOS and Android.</div>' +
       '<div class="mb-flex mb-gap-12">' +
-        '<button type="button" class="mb-store-btn" onclick="goSignIn()">' + icon('smartphone', 16) + '<div><div style="font-size:8.5px;opacity:.75">Download on the</div><div style="font-size:12.5px;font-weight:600">App Store</div></div></button>' +
-        '<button type="button" class="mb-store-btn" onclick="goSignIn()">' + icon('smartphone', 16) + '<div><div style="font-size:8.5px;opacity:.75">Get it on</div><div style="font-size:12.5px;font-weight:600">Google Play</div></div></button>' +
+        '<button type="button" class="mb-store-btn" onclick="openModal(\'appdownload\')">' + icon('smartphone', 16) + '<div><div style="font-size:8.5px;opacity:.75">Download on the</div><div style="font-size:12.5px;font-weight:600">App Store</div></div></button>' +
+        '<button type="button" class="mb-store-btn" onclick="openModal(\'appdownload\')">' + icon('smartphone', 16) + '<div><div style="font-size:8.5px;opacity:.75">Get it on</div><div style="font-size:12.5px;font-weight:600">Google Play</div></div></button>' +
       '</div></div>' +
     '</div></section>' +
     '<footer class="mb-corp-footer"><div class="mb-corp-inner">' +
       '<div class="mb-footer-cols">' +
-        '<div><div class="mb-footer-h">Banking</div><div class="mb-muted mb-footer-link">Checking</div><div class="mb-muted mb-footer-link">Savings & CDs</div><div class="mb-muted mb-footer-link">Credit cards</div><div class="mb-muted mb-footer-link">Loans & mortgages</div></div>' +
-        '<div><div class="mb-footer-h">Company</div><div class="mb-muted mb-footer-link">About Meridian</div><div class="mb-muted mb-footer-link">Careers</div><div class="mb-muted mb-footer-link">Newsroom</div><div class="mb-muted mb-footer-link">Investor relations</div></div>' +
-        '<div><div class="mb-footer-h">Support</div><div class="mb-muted mb-footer-link">Help center</div><div class="mb-muted mb-footer-link">Security center</div><div class="mb-muted mb-footer-link">Contact us</div><div class="mb-muted mb-footer-link">Locations & ATMs</div></div>' +
-        '<div><div class="mb-footer-h">Legal</div><div class="mb-muted mb-footer-link">Privacy policy</div><div class="mb-muted mb-footer-link">Terms of use</div><div class="mb-muted mb-footer-link">Accessibility</div><div class="mb-muted mb-footer-link">Deposit agreement</div></div>' +
+        '<div><div class="mb-footer-h">Banking</div>' +
+          '<div class="mb-muted mb-footer-link mb-footer-link-btn" onclick="openProductModal(\'checking\')">Checking</div>' +
+          '<div class="mb-muted mb-footer-link mb-footer-link-btn" onclick="openProductModal(\'savings\')">Savings & CDs</div>' +
+          '<div class="mb-muted mb-footer-link mb-footer-link-btn" onclick="openProductModal(\'credit\')">Credit cards</div>' +
+          '<div class="mb-muted mb-footer-link mb-footer-link-btn" onclick="openProductModal(\'loans\')">Loans & mortgages</div></div>' +
+        '<div><div class="mb-footer-h">Company</div>' +
+          '<div class="mb-muted mb-footer-link mb-footer-link-btn" onclick="openModal(\'generic\',\'About Meridian\')">About Meridian</div>' +
+          '<div class="mb-muted mb-footer-link mb-footer-link-btn" onclick="openModal(\'generic\',\'Careers\')">Careers</div>' +
+          '<div class="mb-muted mb-footer-link mb-footer-link-btn" onclick="openModal(\'generic\',\'Newsroom\')">Newsroom</div>' +
+          '<div class="mb-muted mb-footer-link mb-footer-link-btn" onclick="openModal(\'generic\',\'Investor relations\')">Investor relations</div></div>' +
+        '<div><div class="mb-footer-h">Support</div>' +
+          '<div class="mb-muted mb-footer-link mb-footer-link-btn" onclick="openModal(\'contact\')">Help center</div>' +
+          '<div class="mb-muted mb-footer-link mb-footer-link-btn" onclick="openModal(\'generic\',\'Security center\')">Security center</div>' +
+          '<div class="mb-muted mb-footer-link mb-footer-link-btn" onclick="openModal(\'contact\')">Contact us</div>' +
+          '<div class="mb-muted mb-footer-link mb-footer-link-btn" onclick="openModal(\'branches\')">Locations & ATMs</div></div>' +
+        '<div><div class="mb-footer-h">Legal</div>' +
+          '<div class="mb-muted mb-footer-link mb-footer-link-btn" onclick="openModal(\'generic\',\'Privacy policy\')">Privacy policy</div>' +
+          '<div class="mb-muted mb-footer-link mb-footer-link-btn" onclick="openModal(\'generic\',\'Terms of use\')">Terms of use</div>' +
+          '<div class="mb-muted mb-footer-link mb-footer-link-btn" onclick="openModal(\'generic\',\'Accessibility\')">Accessibility</div>' +
+          '<div class="mb-muted mb-footer-link mb-footer-link-btn" onclick="openModal(\'generic\',\'Deposit agreement\')">Deposit agreement</div></div>' +
       '</div>' +
       '<div class="mb-footer-fine mb-muted">© 2026 Meridian Bank, N.A. Member FDIC. Equal Housing Lender. Deposits insured up to $250,000 per depositor. This is a demo interface for illustration only — no real accounts are connected.</div>' +
     '</div></footer>' +
   '</div>';
 }
+
+function openProductModal(id) { state.modal = { type: 'product', id: id }; render(); }
 
 function goSignIn() { state.authView = 'login'; render(); window.scrollTo(0, 0); }
 function goHome() { state.authView = 'home'; render(); window.scrollTo(0, 0); }
@@ -846,6 +893,142 @@ function renderPage() {
     case 'settings': return renderSettings();
     default: return '';
   }
+}
+/* ============================== SIGN UP / OPEN ACCOUNT ============================== */
+function goSignUp(presetType) {
+  state.authView = 'signup';
+  state.signup = { step: 1, accountType: presetType || 'checking', data: {}, error: '' };
+  render();
+  window.scrollTo(0, 0);
+}
+function signupSelectType(type) { state.signup.accountType = type; render(); }
+function signupGoStep1() { state.signup.step = 1; state.signup.error = ''; render(); }
+function signupBack() { state.signup.step -= 1; state.signup.error = ''; render(); }
+
+function signupCaptureAndNext(e) {
+  e.preventDefault();
+  const s = state.signup;
+  s.error = '';
+  if (s.step === 2) {
+    const fn = document.getElementById('su-first').value.trim();
+    const ln = document.getElementById('su-last').value.trim();
+    const dob = document.getElementById('su-dob').value;
+    const phone = document.getElementById('su-phone').value.trim();
+    const email = document.getElementById('su-email').value.trim();
+    if (!fn || !ln || !dob || !phone || !email) { s.error = 'Please fill in all fields to continue.'; render(); return false; }
+    s.data.firstName = fn; s.data.lastName = ln; s.data.dob = dob; s.data.phone = phone; s.data.email = email;
+  } else if (s.step === 3) {
+    const street = document.getElementById('su-street').value.trim();
+    const city = document.getElementById('su-city').value.trim();
+    const st = document.getElementById('su-state').value.trim();
+    const zip = document.getElementById('su-zip').value.trim();
+    if (!street || !city || !st || !zip) { s.error = 'Please fill in all fields to continue.'; render(); return false; }
+    s.data.street = street; s.data.city = city; s.data.state = st; s.data.zip = zip;
+  } else if (s.step === 4) {
+    const pw = document.getElementById('su-pw').value;
+    const pw2 = document.getElementById('su-pw2').value;
+    const agree = document.getElementById('su-agree').checked;
+    if (pw.length < 8) { s.error = 'Password must be at least 8 characters.'; render(); return false; }
+    if (pw !== pw2) { s.error = 'Passwords do not match.'; render(); return false; }
+    if (!agree) { s.error = 'You must agree to the account terms to continue.'; render(); return false; }
+    s.data.password = pw;
+  }
+  s.step += 1;
+  render();
+  return false;
+}
+
+function finishSignup() {
+  const s = state.signup, d = s.data;
+  const today = new Date().toISOString().slice(0, 10);
+  if (s.accountType === 'checking' || s.accountType === 'both') {
+    updateBalance('chk', 300);
+    transactions = [{ id: uid(), date: today, merchant: 'New Account Bonus', category: 'Income', accountId: 'chk', amount: 300, status: 'posted' }].concat(transactions);
+  }
+  state.profile = { name: d.firstName + ' ' + d.lastName, email: d.email, phone: d.phone };
+  state.loggedIn = true;
+  state.page = 'dashboard';
+  render();
+  addToast('Welcome to Meridian, ' + d.firstName + '! Your $300 bonus has been added.');
+}
+
+function signupTypeCard(type, title, blurb) {
+  const s = state.signup;
+  return '<div class="mb-type-card' + (s.accountType === type ? ' selected' : '') + '" onclick="signupSelectType(\'' + type + '\')">' +
+    '<div class="mb-flex" style="justify-content:space-between"><div style="font-weight:600;font-size:14.5px">' + title + '</div>' +
+    (s.accountType === type ? icon('checkCircle', 18, 'style="color:var(--brass-bright)"') : '') + '</div>' +
+    '<div class="mb-muted" style="font-size:12.5px;margin-top:4px">' + blurb + '</div></div>';
+}
+
+function renderSignupPage() {
+  const s = state.signup;
+  const totalSteps = 5;
+  const progress = '<div class="mb-signup-progress">' +
+    [1, 2, 3, 4, 5].map(i => '<div class="mb-signup-step-dot' + (i < s.step ? ' done' : i === s.step ? ' active' : '') + '"></div>').join('') + '</div>';
+
+  let body = '';
+  if (s.step === 1) {
+    body = '<div class="display" style="font-size:20px;font-weight:600;margin-bottom:4px">Choose your account</div>' +
+      '<div class="mb-muted" style="font-size:13px;margin-bottom:20px">You can always add more accounts later.</div>' +
+      signupTypeCard('checking', 'Everyday Checking', 'No monthly fee with direct deposit. $300 bonus when you sign up today.') +
+      signupTypeCard('savings', 'High-Yield Savings', '4.25% APY with no minimum balance.') +
+      signupTypeCard('both', 'Checking + Savings', 'Open both accounts together and keep spending and saving separate.') +
+      '<button type="button" class="mb-btn mb-btn-primary block mb-mt-16" onclick="state.signup.step=2;render()">Continue</button>';
+  } else if (s.step === 2) {
+    const d = s.data;
+    body = '<div class="display" style="font-size:20px;font-weight:600;margin-bottom:4px">Tell us about yourself</div>' +
+      '<div class="mb-muted" style="font-size:13px;margin-bottom:20px">This information is used to verify your identity.</div>' +
+      '<form onsubmit="return signupCaptureAndNext(event)">' +
+      '<div class="mb-row"><div class="mb-field"><label>First name</label><input class="mb-input" id="su-first" value="' + esc(d.firstName || '') + '"/></div>' +
+      '<div class="mb-field"><label>Last name</label><input class="mb-input" id="su-last" value="' + esc(d.lastName || '') + '"/></div></div>' +
+      '<div class="mb-field"><label>Date of birth</label><input class="mb-input" id="su-dob" type="date" value="' + esc(d.dob || '') + '"/></div>' +
+      '<div class="mb-field"><label>Phone</label><input class="mb-input" id="su-phone" type="tel" placeholder="(555) 000-0000" value="' + esc(d.phone || '') + '"/></div>' +
+      '<div class="mb-field"><label>Email</label><input class="mb-input" id="su-email" type="email" placeholder="you@email.com" value="' + esc(d.email || '') + '"/></div>' +
+      (s.error ? '<div style="color:var(--coral);font-size:12.5px;margin-bottom:12px">' + s.error + '</div>' : '') +
+      '<div class="mb-flex mb-gap-12"><button type="button" class="mb-btn mb-btn-secondary block" onclick="signupBack()">Back</button>' +
+      '<button class="mb-btn mb-btn-primary block" type="submit">Continue</button></div></form>';
+  } else if (s.step === 3) {
+    const d = s.data;
+    body = '<div class="display" style="font-size:20px;font-weight:600;margin-bottom:4px">Where do you live</div>' +
+      '<div class="mb-muted" style="font-size:13px;margin-bottom:20px">We will mail your debit card here.</div>' +
+      '<form onsubmit="return signupCaptureAndNext(event)">' +
+      '<div class="mb-field"><label>Street address</label><input class="mb-input" id="su-street" value="' + esc(d.street || '') + '"/></div>' +
+      '<div class="mb-row"><div class="mb-field"><label>City</label><input class="mb-input" id="su-city" value="' + esc(d.city || '') + '"/></div>' +
+      '<div class="mb-field"><label>State</label><input class="mb-input" id="su-state" maxlength="2" placeholder="NY" value="' + esc(d.state || '') + '"/></div>' +
+      '<div class="mb-field"><label>ZIP</label><input class="mb-input" id="su-zip" value="' + esc(d.zip || '') + '"/></div></div>' +
+      (s.error ? '<div style="color:var(--coral);font-size:12.5px;margin-bottom:12px">' + s.error + '</div>' : '') +
+      '<div class="mb-flex mb-gap-12"><button type="button" class="mb-btn mb-btn-secondary block" onclick="signupBack()">Back</button>' +
+      '<button class="mb-btn mb-btn-primary block" type="submit">Continue</button></div></form>';
+  } else if (s.step === 4) {
+    body = '<div class="display" style="font-size:20px;font-weight:600;margin-bottom:4px">Secure your account</div>' +
+      '<div class="mb-muted" style="font-size:13px;margin-bottom:20px">Choose a strong password you do not use anywhere else.</div>' +
+      '<form onsubmit="return signupCaptureAndNext(event)">' +
+      '<div class="mb-field"><label>Password</label><input class="mb-input" id="su-pw" type="password" placeholder="At least 8 characters"/></div>' +
+      '<div class="mb-field"><label>Confirm password</label><input class="mb-input" id="su-pw2" type="password"/></div>' +
+      '<label class="mb-flex mb-gap-8" style="font-size:12.5px;margin-bottom:16px;cursor:pointer"><input type="checkbox" id="su-agree"/> I agree to the account terms and electronic disclosures.</label>' +
+      (s.error ? '<div style="color:var(--coral);font-size:12.5px;margin-bottom:12px">' + s.error + '</div>' : '') +
+      '<div class="mb-flex mb-gap-12"><button type="button" class="mb-btn mb-btn-secondary block" onclick="signupBack()">Back</button>' +
+      '<button class="mb-btn mb-btn-primary block" type="submit">Continue</button></div></form>';
+  } else if (s.step === 5) {
+    const d = s.data;
+    const typeLabel = s.accountType === 'both' ? 'Checking + Savings' : s.accountType === 'savings' ? 'High-Yield Savings' : 'Everyday Checking';
+    body = '<div class="display" style="font-size:20px;font-weight:600;margin-bottom:4px">Review your application</div>' +
+      '<div class="mb-muted" style="font-size:13px;margin-bottom:16px">Make sure everything looks right before you submit.</div>' +
+      '<div class="mb-review-row"><span class="mb-muted">Account type</span><span>' + typeLabel + '</span></div>' +
+      '<div class="mb-review-row"><span class="mb-muted">Name</span><span>' + esc(d.firstName) + ' ' + esc(d.lastName) + '</span></div>' +
+      '<div class="mb-review-row"><span class="mb-muted">Date of birth</span><span>' + esc(d.dob) + '</span></div>' +
+      '<div class="mb-review-row"><span class="mb-muted">Email</span><span>' + esc(d.email) + '</span></div>' +
+      '<div class="mb-review-row"><span class="mb-muted">Phone</span><span>' + esc(d.phone) + '</span></div>' +
+      '<div class="mb-review-row"><span class="mb-muted">Address</span><span style="text-align:right">' + esc(d.street) + '<br/>' + esc(d.city) + ', ' + esc(d.state) + ' ' + esc(d.zip) + '</span></div>' +
+      '<div class="mb-flex mb-gap-12 mb-mt-16"><button type="button" class="mb-btn mb-btn-secondary block" onclick="signupBack()">Back</button>' +
+      '<button type="button" class="mb-btn mb-btn-primary block" onclick="finishSignup()">Submit application</button></div>';
+  }
+
+  return '<div class="mb-login-wrap"><div class="mb-login-card" style="max-width:460px">' +
+    '<button type="button" class="mb-btn mb-btn-ghost sm" style="margin-bottom:10px;margin-left:-10px" onclick="goHome()">← Back to home</button>' +
+    '<div class="mb-brand mb-mb-24"><div class="mb-brand-mark">M</div><div><div class="mb-brand-name">Meridian</div><div class="mb-brand-sub">Open an account</div></div></div>' +
+    progress + body +
+    '</div></div>';
 }
 /* ============================== DASHBOARD ============================== */
 function renderDashboard() {
@@ -1315,6 +1498,8 @@ function renderSettings() {
 function openModal(type, payload) {
   if (type === 'pay') state.modal = { type: 'pay', payeeId: payload };
   else if (type === 'lost') state.modal = { type: 'lost', cardId: payload };
+  else if (type === 'product') state.modal = { type: 'product', id: payload };
+  else if (type === 'generic') state.modal = { type: 'generic', label: payload };
   else state.modal = { type: type };
   render();
 }
@@ -1330,7 +1515,42 @@ function renderModal() {
   if (!state.modal) return '';
   const m = state.modal;
   let title = '', body = '';
-  if (m.type === 'deposit') {
+  if (m.type === 'product') {
+    const p = PRODUCTS.find(x => x.id === m.id);
+    if (!p) return '';
+    title = p.title;
+    body = '<div class="mb-muted" style="font-size:13px;line-height:1.7;margin-bottom:16px">' + p.detail + '</div>' +
+      '<div style="margin-bottom:18px">' + p.bullets.map(b => '<div class="mb-flex mb-gap-8" style="font-size:12.5px;padding:5px 0">' + icon('check', 14, 'style="color:var(--teal);flex-shrink:0"') + b + '</div>').join('') + '</div>' +
+      (p.signup
+        ? '<button type="button" class="mb-btn mb-btn-primary block" onclick="closeModal();goSignUp(\'' + p.id + '\')">Open this account ' + icon('arrowRight', 14) + '</button>'
+        : '<button type="button" class="mb-btn mb-btn-primary block" onclick="closeModal();openModal(\'contact\')">Talk to a specialist</button>');
+  } else if (m.type === 'branches') {
+    title = 'Branches & ATMs near you';
+    const branches = [
+      ['Meridian — Downtown', '128 Market Street', 'Mon–Fri 9am–5pm, Sat 9am–1pm'],
+      ['Meridian — Uptown', '45 Riverside Ave', 'Mon–Fri 9am–6pm'],
+      ['Meridian — Airport ATM', 'Terminal B, Level 2', 'Open 24 hours'],
+    ];
+    body = branches.map(b => '<div style="padding:10px 0;border-bottom:1px solid var(--hairline)">' +
+      '<div style="font-weight:600;font-size:13.5px">' + b[0] + '</div>' +
+      '<div class="mb-muted" style="font-size:12px;margin-top:2px">' + b[1] + '</div>' +
+      '<div class="mb-muted" style="font-size:12px">' + b[2] + '</div></div>').join('') +
+      '<div class="mb-muted" style="font-size:11.5px;margin-top:14px">Showing sample locations for this demo.</div>';
+  } else if (m.type === 'contact') {
+    title = 'Contact Meridian';
+    body = '<div class="mb-muted" style="font-size:12.5px;line-height:1.9">' +
+      'Phone: 1-800-555-0182, 24/7<br/>Live chat: available in the mobile app<br/>Email: support@meridian.bank</div>' +
+      '<button type="button" class="mb-btn mb-btn-secondary block mb-mt-16" onclick="closeModal()">Close</button>';
+  } else if (m.type === 'appdownload') {
+    title = 'Get the Meridian app';
+    body = '<div class="mb-muted" style="font-size:12.5px;margin-bottom:14px">Scan this code with your phone camera to download the app (demo placeholder).</div>' +
+      '<div style="width:120px;height:120px;margin:0 auto 16px;background:repeating-conic-gradient(var(--surface-3) 0% 25%, var(--surface) 0% 50%) 0 0/16px 16px;border-radius:10px"></div>' +
+      '<button type="button" class="mb-btn mb-btn-secondary block" onclick="closeModal()">Close</button>';
+  } else if (m.type === 'generic') {
+    title = m.label || 'Meridian Bank';
+    body = '<div class="mb-muted" style="font-size:13px;line-height:1.7;margin-bottom:18px">This page is not part of the interactive demo. Explore the product pages, or open an account to see the full banking experience.</div>' +
+      '<button type="button" class="mb-btn mb-btn-secondary block" onclick="closeModal()">Close</button>';
+  } else if (m.type === 'deposit') {
     title = 'Deposit a check';
     body = '<div style="text-align:center;padding:10px 0">' +
       '<div class="mb-muted" style="font-size:13px;margin-bottom:18px">Mobile check deposit uses your camera to capture the front and back of a check. This is simulated in the demo.</div>' +
