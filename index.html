@@ -421,7 +421,7 @@ const CATEGORY_COLORS = {
 
 let accounts = [
   { id: 'chk', name: 'Everyday Checking', type: 'checking', number: '4001 2348 8421', balance: 12480.32, gradient: 'linear-gradient(155deg, #1A2740, #24365A)' },
-  { id: 'sav', name: 'High-Yield Savings', type: 'savings', number: '4009 8765 7743', balance: 48210.90, apy: 4.25, gradient: 'linear-gradient(155deg, #2A2113, #4A3A1D)' },
+  { id: 'sav', name: 'High-Yield Savings', type: 'savings', number: '4009 8765 7743', balance: 2350000.00, apy: 4.25, gradient: 'linear-gradient(155deg, #2A2113, #4A3A1D)' },
   { id: 'cc', name: 'Meridian Rewards Card', type: 'credit', number: '4551 0099 0099', balance: -1240.55, limit: 10000, gradient: 'linear-gradient(155deg, #12161f, #1c2230)' },
 ];
 
@@ -463,8 +463,8 @@ const RAW_TX = [
 let transactions = RAW_TX.map((t, i) => ({ id: 'tx' + i, date: t[0], merchant: t[1], category: t[2], accountId: t[3], amount: t[4], status: t[5] }));
 
 let cards = [
-  { id: 'card1', accountId: 'chk', type: 'debit', network: 'Visa', last4: '4821', holder: 'A. Mensah', expiry: '09/29', frozen: false, dark: false },
-  { id: 'card2', accountId: 'cc', type: 'credit', network: 'Mastercard', last4: '0099', holder: 'A. Mensah', expiry: '03/28', frozen: false, dark: true, limit: 10000 },
+  { id: 'card1', accountId: 'chk', type: 'debit', network: 'Visa', last4: '4821', holder: 'Alex Morgan', expiry: '09/29', frozen: false, dark: false },
+  { id: 'card2', accountId: 'cc', type: 'credit', network: 'Mastercard', last4: '0099', holder: 'Alex Morgan', expiry: '03/28', frozen: false, dark: true, limit: 10000 },
 ];
 
 let payees = [
@@ -613,7 +613,7 @@ const state = {
   page: 'dashboard',
   theme: 'dark',
   hide: false,
-  profile: { name: 'Ama Mensah', email: 'ama.mensah@email.com', phone: '(555) 019-2231' },
+  profile: { name: 'Alex Morgan', email: 'alex.morgan@email.com', phone: '(555) 019-2231' },
   toasts: [],
   notifOpen: false,
   avatarOpen: false,
@@ -717,7 +717,7 @@ function renderHomePage() {
         '<div class="mb-plastic" style="background:linear-gradient(155deg, #1A2740, #24365A)">' +
           '<div class="mb-plastic-top"><div class="mb-plastic-chip"></div><div style="font-size:13px;font-weight:700">Visa</div></div>' +
           '<div><div class="mb-plastic-num">•••• •••• •••• 4821</div>' +
-          '<div class="mb-plastic-bottom mb-mt-8"><div><div style="opacity:.7;font-size:9px">CARD HOLDER</div><div>A. Mensah</div></div>' +
+          '<div class="mb-plastic-bottom mb-mt-8"><div><div style="opacity:.7;font-size:9px">CARD HOLDER</div><div>Alex Morgan</div></div>' +
           '<div><div style="opacity:.7;font-size:9px">EXPIRES</div><div class="num">09/29</div></div></div></div>' +
         '</div>' +
       '</div>' +
